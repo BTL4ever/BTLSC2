@@ -1,0 +1,12 @@
+deps
+discordia.log
+dotenv.lua
+gateway.lua
+getCommands.lua
+inspect.lua
+m2ain.lua
+mainChannels.json
+moderationBody.lua
+registerCommands.lua
+run.cmd
+unregisterCommands.lua
