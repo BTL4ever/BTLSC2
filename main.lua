@@ -5,7 +5,13 @@ local client = discordia.Client():useApplicationCommands()
 local json = require("json")
 local http = require("coro-http")
 local timer = require("timer")
-local availableGuilds = {["1350119432894021662"] = true,["1259951808969834557"] = true,["1410967023802126428"] = true,["1433874230935552172"] = true,["1399856511534104637"] = true}
+local availableGuilds = {
+    ["1350119432894021662"] = true,
+    ["1259951808969834557"] = true,
+    ["1410967023802126428"] = true,
+    ["1433874230935552172"] = true,
+    ["1399856511534104637"] = true
+}
 local timeoutedDataJson = io.open("timeoutedData.json","r")
 local timeoutedData = json.decode(timeoutedDataJson:read("*a")) or {}
 timeoutedDataJson:close()
@@ -21,6 +27,11 @@ mainChannelsJson:close()
 local customEmojis = {["BTLST_Success"] = "BTLST_Success:1461391133232992409",["BTLST_Basic_Fail"] = "BTLST_Basic_Fail:1461391454977917051",["BTLST_Fail"] = "BTLST_Fail:1461391513320947984"}
 local testMode = true
 local operationIsOnProgress = false
+local function commandNameCheck(options)
+    local commandName = " "..options[1]["name"]
+    if options[1] and options[1]["options"] then commandName = commandName..commandNameCheck(options[1]["options"]) end
+    return commandName
+end
 local function timeoutMember(guildId,memberId,duration,reason)
     if duration > 0 then timeoutedData[guildId][memberId] = os.time() + duration else timeoutedData[guildId][memberId] = 0 end
     local url = string.format("https://discord.com/api/v10/guilds/%s/members/%s",guildId,memberId)
@@ -58,21 +69,7 @@ client:on("slashCommand",function(interaction,command,args)
     end
     local commandName = interaction.data.name
     local options = interaction.data.options
-    if options and options[1] then
-        commandName = commandName.." "..options[1]["name"]
-        if options[1]["options"] and options[1]["options"][1] then
-            commandName = commandName.." "..options[1]["options"][1]["name"]
-            if options[1]["options"][1]["options"] and options[1]["options"][1]["options"][1] then
-                commandName = commandName.." "..options[1]["options"][1]["options"][1]["name"]
-                if options[1]["options"][1]["options"][1]["options"] and options[1]["options"][1]["options"][1]["options"][1] then
-                    commandName = commandName.." "..options[1]["options"][1]["options"][1]["options"][1]["name"]
-                    if options[1]["options"][1]["options"][1]["options"][1]["options"] and options[1]["options"][1]["options"][1]["options"][1]["options"][1] then
-                        commandName = commandName.." "..options[1]["options"][1]["options"][1]["options"][1]["options"][1]["name"]
-                    end
-                end
-            end
-        end
-    end
+    if options and options[1] then commandName = commandName..commandNameCheck(options) end
     if not availableGuilds[interaction.guild.id] and interaction.guild.id ~= "1433874230935552172" or interaction.user.id ~= "1335946313292058664" then
         interaction:reply{content = "This Bot is Not Available in This Server",flags = 64}
         operationIsOnProgress = false
@@ -144,6 +141,7 @@ client:on("slashCommand",function(interaction,command,args)
                     if resCode == 403 then
                         embed["color"] = 0x8b0000
                         embed["title"] = "Can't Timeout Member"
+                        embed["description"]  = "Most Common Reason is Bot's Highest Role is Below the Target Member's Highest Role"
                         embed["fields"] = {
                             {name = "Member",value = targetMember.username,inline = true},
                             {name = "Duration",value = duration,inline = true},
@@ -164,7 +162,7 @@ client:on("slashCommand",function(interaction,command,args)
                     end
                     local message = interaction:reply{embed = embed}
                     if message then message:addReaction(customEmojis[resultEmoji]) end
-                    timer.setTimeout(duration*1000, function()
+                    timer.setTimeout(duration*1000,function()
                         if timeoutedData[interaction.guild.id][targetMember.id] then
                             timeoutedData[interaction.guild.id][targetMember.id] = nil
                             local timeoutedDataJsonW = io.open("timeoutedData.json","w")
