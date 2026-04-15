@@ -1,3 +1,4 @@
+-- Modules
 local inspect = require("pretty-print")
 local discordia = require("discordia")
 local dcmd = require("discordia-slash")
@@ -5,13 +6,16 @@ local client = discordia.Client():useApplicationCommands()
 local json = require("json")
 local http = require("coro-http")
 local timer = require("timer")
-local availableGuilds = {
+
+local availableGuilds = { -- Available Servers with ID
     ["1350119432894021662"] = true,
     ["1259951808969834557"] = true,
     ["1410967023802126428"] = true,
     ["1433874230935552172"] = true,
     ["1399856511534104637"] = true
 }
+
+-- Accessing Files Outside This Code
 local timeoutedDataJson = io.open("timeoutedData.json","r")
 local timeoutedData = json.decode(timeoutedDataJson:read("*a")) or {}
 timeoutedDataJson:close()
@@ -24,15 +28,21 @@ confirmDataJson:close()
 local mainChannelsJson = io.open("mainChannels.json","r")
 local mainChannels = json.decode(mainChannelsJson:read("*a")) or {}
 mainChannelsJson:close()
-local customEmojis = {["BTLST_Success"] = "BTLST_Success:1461391133232992409",["BTLST_Basic_Fail"] = "BTLST_Basic_Fail:1461391454977917051",["BTLST_Fail"] = "BTLST_Fail:1461391513320947984"}
-local testMode = true
-local operationIsOnProgress = false
+local customEmojis = { -- Emoji Templates
+    ["BTLST_Success"] = "BTLST_Success:1461391133232992409",
+    ["BTLST_Basic_Fail"] = "BTLST_Basic_Fail:1461391454977917051",
+    ["BTLST_Fail"] = "BTLST_Fail:1461391513320947984"
+}
+
+local testMode = true -- Are Others able to Use This Bot in Discord
+
+-- Functions
 local function commandNameCheck(options)
     local commandName = " "..options[1]["name"]
     if options[1] and options[1]["options"] then commandName = commandName..commandNameCheck(options[1]["options"]) end
     return commandName
 end
-local function timeoutMember(guildId,memberId,duration,reason)
+local function timeoutMember(guildId,memberId,duration,reason) -- Can be Used as Untimeout, if You Run with the Duration 0
     if duration > 0 then timeoutedData[guildId][memberId] = os.time() + duration else timeoutedData[guildId][memberId] = 0 end
     local url = string.format("https://discord.com/api/v10/guilds/%s/members/%s",guildId,memberId)
     local untilTime = os.date("!%Y-%m-%dT%H:%M:%S.000Z",timeoutedData[guildId][memberId])
@@ -41,7 +51,7 @@ local function timeoutMember(guildId,memberId,duration,reason)
     local res,data = http.request("PATCH",url,headers,body)
     return res.code
 end
-local function banSystem(isBan,guildId,memberId,deleteDays,reason)
+local function banSystem(isBan,guildId,memberId,deleteDays,reason) -- Ban or Unban
     local url = string.format("https://discord.com/api/v10/guilds/%s/bans/%s",guildId,memberId)
     local headers = {{"Authorization","Bot "..os.getenv('DISCORD_TOKEN')},}
     if reason and #reason > 0 then table.insert(headers,{"X-Audit-Log-Reason",reason}) end
@@ -53,28 +63,30 @@ local function banSystem(isBan,guildId,memberId,deleteDays,reason)
     else res,data = http.request("DELETE",url,headers) end
     return res.code
 end
-client:on("ready",function()
-    if operationIsOnProgress then return end
-    operationIsOnProgress = true
-    print("$#","Logged in as "..client.user.username,"#")
-    operationIsOnProgress = false
-end)
+
+-- When the Bot Logins
+client:on("ready",function() print("$#","Logged in as "..client.user.username,"#") end)
+
+-- When Someone Uses A Slash Command
 client:on("slashCommand",function(interaction,command,args)
-    if operationIsOnProgress == true then return end
-    operationIsOnProgress = true
+    -- Test-Mode Check
     if testMode and interaction.user.id ~= "1335946313292058664" then
         interaction:reply{content = "Bot is Currently in Test-Mode; Only `The🐧BTL` (aka baconteams_leader) Can Use Commands",flags = 64}
-        operationIsOnProgress = false
         return
     end
+
+    -- Get the Command's Full Name (Include the Subcommand Groups and Subcommands)
     local commandName = interaction.data.name
     local options = interaction.data.options
     if options and options[1] then commandName = commandName..commandNameCheck(options) end
+
+    -- To Check Bot Availablity in the Server that the Slash Command Used
     if not availableGuilds[interaction.guild.id] and interaction.guild.id ~= "1433874230935552172" or interaction.user.id ~= "1335946313292058664" then
         interaction:reply{content = "This Bot is Not Available in This Server",flags = 64}
-        operationIsOnProgress = false
         return
     end
+
+    -- The Commands that the Only Owner of the Bot can Run
     if interaction.user.id == "1335946313292058664" then
         if commandName:match("^test%-mode") then
             if testMode then testMode = false else testMode = true end
@@ -83,9 +95,7 @@ client:on("slashCommand",function(interaction,command,args)
             return
         elseif commandName:match("^shutdown") then
             local mainChannel
-            for i,v in pairs(availableGuilds) do
-                client:getGuild(i):getChannel(mainChannels[i]):send("Shutdown Requested; Shutting Down...🔷")
-            end
+            for i,v in pairs(availableGuilds) do client:getGuild(i):getChannel(mainChannels[i]):send("Shutdown Requested; Shutting Down...🔷") end
             interaction:reply{content = "Shutting Down...🔷",flags = 64}
             client:stop()
             return
@@ -95,35 +105,49 @@ client:on("slashCommand",function(interaction,command,args)
             return
         end
     end
-    print("$#","----------------------------------------------------","#")
+
+    -- User and Member
     local user = interaction.user
     local member = interaction.member
+
+    -- Print Some Details about the Interaction
+    print("$#","----------------------------------------------------","#")
     print("$#","Command Name:",commandName,"#")
     print("$#","User:",user.username,user.id,"#")
-    local embed = {
+    
+    local embed = { -- Basic Embed Template
         title = "Command Received But it's Not Added Yet",
         description = commandName,
-        color = 0x8b0000,
+        color = 0x8b0000, -- Burgundy
         fields = {},
         timestamp = discordia.Date():toISO('T','Z')
     }
+    
     local buttons1 = {}
+
+    -- Commands
     if commandName:match("^moderation") then
-        if (not member:hasPermission("administrator")) and user.username ~= "troxyblox" then
+
+        -- Check if the Member has Permission to Use the Bot
+        if not member:hasPermission("administrator") and user.username ~= "troxyblox" then
             embed["title"] = "You Don't Have Permission to Use This Command❌"
             embed["description"] = "You Need the `Administrator` Permission to Use Moderation Commands"
-            embed["color"] = 0xff0000
+            embed["color"] = 0xff0000 -- Really Red
             interaction:reply{embed = embed,flags = 64}
             operationIsOnProgress = false
             return
         elseif commandName:match("^moderation add%-action") then
-            embed["color"] = 0x00ff00
+            embed["color"] = 0x00ff00 -- Really Green
+
             if commandName:match("^moderation add%-action timeout") then
                 local reason = "No Reason Set"
                 local targetMember
                 local duration
                 local resultEmoji = "BTLST_Fail"
+
+                -- Get the Reason, Target Member, and Duration Provided
                 for i,v in pairs(options[1]["options"][1]["options"]) do if v["name"] == "reason" then reason = v["value"] elseif v["name"] == "member" then targetMember = interaction.guild:getMember(v["value"]) elseif v["name"] == "duration" then duration = v["value"] end end
+                
                 if not targetMember then
                     embed["color"] = 0x8b0000
                     embed["title"] = "Can't Find Member"
@@ -135,11 +159,16 @@ client:on("slashCommand",function(interaction,command,args)
                     local message = interaction:reply{embed = embed}
                     message:addReaction(customEmojis[resultEmoji])
                 else
+                    -- Check if the Target Member already Timeouted
                     if timeoutedData[interaction.guild.id] and timeoutedData[interaction.guild.id][targetMember.id] then embed["title"] = "Member is Already Timeouted; Changed Timeout Instead" else embed["title"] = "Timeouted" end
+
+                    -- Timeout
                     local resCode = timeoutMember(interaction.guild.id,targetMember.id,duration,reason)
                     print("$#",resCode,"#")
+
+                    -- Check if Timeout is Failed
                     if resCode == 403 then
-                        embed["color"] = 0x8b0000
+                        embed["color"] = 0x8b0000 -- Burgundy
                         embed["title"] = "Can't Timeout Member"
                         embed["description"]  = "Most Common Reason is Bot's Highest Role is Below the Target Member's Highest Role"
                         embed["fields"] = {
@@ -155,13 +184,19 @@ client:on("slashCommand",function(interaction,command,args)
                             {name = "Duration",value = duration,inline = true},
                             {name = "Reason",value = reason,inline = true}
                         }
+
+                        -- Remember Timeout
                         timeoutedData[interaction.guild.id][targetMember.id] = os.time() + duration
+
+                        -- Refresh Timeout Data
                         local timeoutedDataJsonW = io.open("timeoutedData.json","w")
                         timeoutedDataJsonW:write(json.encode(timeoutedData))
                         timeoutedDataJsonW:close()
                     end
-                    local message = interaction:reply{embed = embed}
-                    if message then message:addReaction(customEmojis[resultEmoji]) end
+                    local message = interaction:reply{embed = embed} -- Reply
+                    if message then message:addReaction(customEmojis[resultEmoji]) end -- Show the Result by Reacting with Emoji
+
+                    -- Delete Timeout Data, when the Duration Passes
                     timer.setTimeout(duration*1000,function()
                         if timeoutedData[interaction.guild.id][targetMember.id] then
                             timeoutedData[interaction.guild.id][targetMember.id] = nil
@@ -175,13 +210,16 @@ client:on("slashCommand",function(interaction,command,args)
             elseif commandName:match("^moderation add%-action lock") then
                 local channel = interaction.guild:getChannel(options[1]["options"][1]["options"][1] and options[1]["options"][1]["options"][1]["value"]) or interaction.channel
                 local resultEmoji = "BTLST_Fail"
+
+                -- Check if Bot Can View the Channel
                 if channel ~= interaction.channel and not interaction.guild:getChannel(options[1]["options"][1]["options"][1]["value"]) then
-                    embed["color"] = 0x8b0000
+                    embed["color"] = 0x8b0000 -- Burgundy
                     embed["title"] = "Bot Doesn't Have Permission to View That Channel"
                     embed["fields"] = {{name = "Channel",value = channel.name,inline = true}}
                 else
+                    -- Check if Default Role has Permission to View the Channel
                     if channel:getPermissionOverwriteFor(interaction.guild.defaultRole):getDeniedPermissions():has("sendMessages") then
-                        embed["color"] = 0xdeb900
+                        embed["color"] = 0xdeb900 -- Orange
                         embed["title"] = "Channel is Already Locked"
                         resultEmoji = "BTLST_Basic_Fail"
                         embed["fields"] = {{name = "Channel",value = channel.name,inline = true}}
@@ -192,15 +230,19 @@ client:on("slashCommand",function(interaction,command,args)
                         embed["fields"] = {{name = "Channel",value = channel.name,inline = true}}
                     end
                 end
-                local message = interaction:reply{embed = embed}
-                message:addReaction(customEmojis[resultEmoji])
+                local message = interaction:reply{embed = embed} -- Reply
+                message:addReaction(customEmojis[resultEmoji]) -- Show the Result by Reacting with Emoji
             elseif commandName:match("^moderation add%-action ban") then
                 local reason = "No Reason Set"
                 local targetMember
                 local resultEmoji = "BTLST_Fail"
+
+                -- Get the Reason, and Target Member Provided
                 for i,v in pairs(options[1]["options"][1]["options"]) do if v["name"] == "reason" then reason = v["value"] elseif v["name"] == "member" then targetMember = interaction.guild:getMember(v["value"]) end end
+                
+                -- Check if Can Find Target Member or if Banned
                 if not targetMember or interaction.guild:getBan(targetMember.id) then
-                    embed["color"] = 0xdeb900
+                    embed["color"] = 0xdeb900 -- Orange
                     if interaction.guild:getBan(targetMember.id) then
                         embed["title"] = "Member is Already Banned"
                         resultEmoji = "BTLST_Basic_Fail"
@@ -217,8 +259,10 @@ client:on("slashCommand",function(interaction,command,args)
                     end
                 else
                     local resCode = banSystem(true,interaction.guild.id,targetMember.id,nil,reason)
+
+                    -- Check if Banning Failed
                     if resCode == 403 then
-                        embed["color"] = 0x8b0000
+                        embed["color"] = 0x8b0000 -- Burgundy
                         embed["title"] = "Can't Ban Member"
                         embed["fields"] = {
                             {name = "Member",value = targetMember.username,inline = true},
@@ -234,18 +278,23 @@ client:on("slashCommand",function(interaction,command,args)
                         }
                     end
                 end
-                local message = interaction:reply{embed = embed}
-                message:addReaction(customEmojis[resultEmoji])
+                local message = interaction:reply{embed = embed} -- Reply
+                message:addReaction(customEmojis[resultEmoji]) -- Show the Result by Reacting with Emoji
             else
-                interaction:reply{embed = embed}
+                interaction:reply{embed = embed} -- Reply | The Slash Command that's Used is not Added
             end
         elseif commandName:match("^moderation remove%-action") then
-            embed["color"] = 0xff0000
+            embed["color"] = 0xff0000 -- Really Red
+            
             if commandName:match("^moderation remove%-action untimeout") then
                 local reason = "No Reason Set"
                 local targetMember
                 local resultEmoji = "BTLST_Fail"
+                
+                -- Get the Reason, and Target Member Provided
                 for i,v in pairs(options[1]["options"][1]["options"]) do if v["name"] == "reason" then reason = v["value"] elseif v["name"] == "member" then targetMember = interaction.guild:getMember(v["value"]) end end
+
+                -- Check if can Find the Target Member
                 if not targetMember then
                     embed["color"] = 0x8b0000
                     embed["title"] = "Can't Find Member"
@@ -254,8 +303,9 @@ client:on("slashCommand",function(interaction,command,args)
                         {name = "Reason",value = reason,inline = true}
                     }
                 else
+                    -- Check if Target Member is Timeouted
                     if not timeoutedData[interaction.guild.id][targetMember.id] or timeoutedData[interaction.guild.id][targetMember.id] <= os.time() then
-                        embed["color"] = 0xdeb900
+                        embed["color"] = 0xdeb900 -- Orange
                         embed["title"] = "That Member isn't Timeouted"
                         resultEmoji = "BTLST_Basic_Fail"
                         embed["fields"] = {
@@ -264,8 +314,10 @@ client:on("slashCommand",function(interaction,command,args)
                         }
                     else
                         local resCode = timeoutMember(interaction.guild.id,targetMember.id,0,reason)
+
+                        -- Check if Failed to Remove Timeout
                         if resCode == 403 then
-                            embed["color"] = 0x8b0000
+                            embed["color"] = 0x8b0000 -- Burgundy
                             embed["title"] = "Can't Remove Timeout"
                             embed["fields"] = {
                                 {name = "Member",value = targetMember.username,inline = true},
@@ -280,24 +332,29 @@ client:on("slashCommand",function(interaction,command,args)
                                 {name = "Member",value = targetMember.username,inline = true},
                                 {name = "Reason",value = reason,inline = true}
                             }
+
+                            -- Remove Timeout Outside this Code
                             local timeoutedDataJsonW = io.open("timeoutedData.json","w")
                             timeoutedDataJsonW:write(json.encode(timeoutedData))
                             timeoutedDataJsonW:close()
                         end
                     end
                 end
-                local message = interaction:reply{embed = embed}
-                message:addReaction(customEmojis[resultEmoji])
+                local message = interaction:reply{embed = embed} -- Reply
+                message:addReaction(customEmojis[resultEmoji]) -- Show the Result by Reacting with Emoji
             elseif commandName:match("^moderation remove%-action unlock") then
                 local channel = interaction.guild:getChannel(options[1]["options"][1]["options"][1] and options[1]["options"][1]["options"][1]["value"]) or interaction.channel
                 local resultEmoji = "BTLST_Fail"
+
+                -- Check if Bot can See the Channel
                 if options[1]["options"][1]["options"][1] and not interaction.guild:getChannel(options[1]["options"][1]["options"][1]["value"]) then
-                    embed["color"] = 0x8b0000
-                    embed["title"] = "That Channel Doesn't Exist in This Server"
+                    embed["color"] = 0x8b0000 -- Burgundy
+                    embed["title"] = "Bot doesn't have Permission to View the Channel Provided"
                     embed["fields"] = {{name = "Channel's ID",value = options[1]["options"][1]["options"][1]["value"],inline = true}}
                 else
+                    -- Check if the Channel already Locked
                     if channel:getPermissionOverwriteFor(interaction.guild.defaultRole):getAllowedPermissions():has("sendMessages") then
-                        embed["color"] = 0xdeb900
+                        embed["color"] = 0xdeb900 -- Orange
                         embed["title"] = "That Channel isn't Locked Already"
                         resultEmoji = "BTLST_Basic_Fail"
                         embed["fields"] = {{name = "Channel",value = channel.name,inline = true}}
@@ -308,31 +365,27 @@ client:on("slashCommand",function(interaction,command,args)
                         embed["fields"] = {{name = "Channel",value = channel.name,inline = true}}
                     end
                 end
-                local message = interaction:reply{embed = embed}
-                message:addReaction(customEmojis[resultEmoji])
+                local message = interaction:reply{embed = embed} -- Reply
+                message:addReaction(customEmojis[resultEmoji]) -- Show the Result by Reacting with Emoji
             elseif commandName:match("^moderation remove%-action unban") then
                 local reason = "No Reason Set"
                 local targetMember
                 local resultEmoji = "BTLST_Fail"
+
+                -- Get the Reason, and Target Member Provided
                 for i,v in pairs(options[1]["options"][1]["options"]) do if v["name"] == "reason" then reason = v["value"] elseif v["name"] == "member" then targetMember = v["value"] end end
+                
+                -- Check if Target Member is Banned
                 if not interaction.guild:getBan(targetMember,true) then
-                    embed["color"] = 0xdeb900
-                    if interaction.guild:getMember(targetMember) then
-                        embed["title"] = "That Member isn't Banned Already"
-                        resultEmoji = "BTLST_Basic_Fail"
-                        embed["fields"] = {
-                            {name = "Member",value = interaction.guild:getMember(targetMember).username,inline = true},
-                            {name = "Reason",value = reason,inline = true}
-                        }
-                    else
-                        embed["title"] = "Can't Find Member"
-                        embed["fields"] = {
-                            {name = "Member",value = targetMember,inline = true},
-                            {name = "Reason",value = reason,inline = true}
-                        }
-                    end
+                    embed["color"] = 0xdeb900 -- Orange
+                    embed["title"] = "That Member isn't Banned Already"
+                    resultEmoji = "BTLST_Basic_Fail"
+                    embed["fields"] = {
+                        {name = "Member",value = interaction.guild:getMember(targetMember).username,inline = true},
+                        {name = "Reason",value = reason,inline = true}
+                    }
                 else
-                    banSystem(false,interaction.guild.id,targetMember,nil,reason)
+                    banSystem(false,interaction.guild.id,targetMember,nil,reason) -- Unban
                     embed["title"] = "Unbanned Member"
                     resultEmoji = "BTLST_Success"
                     embed["fields"] = {
@@ -340,41 +393,49 @@ client:on("slashCommand",function(interaction,command,args)
                         {name = "Reason",value = reason,inline = true}
                     }
                 end
-                local message = interaction:reply{embed = embed}
-                message:addReaction(customEmojis[resultEmoji])
+                local message = interaction:reply{embed = embed} -- Reply
+                message:addReaction(customEmojis[resultEmoji]) -- Show the Result by Reacting with Emoji
             else
-                interaction:reply{embed = embed}
+                interaction:reply{embed = embed} -- Reply | The Slash Command Used isn't Added
             end
         elseif commandName:match("^moderation set%-action") then
-            embed["color"] = 0x0000ff
-            interaction:reply{embed = embed,flags = 64}
+            embed["color"] = 0x0000ff -- Really Blue
+            interaction:reply{embed = embed,flags = 64} -- Reply | Set-Action isn't Added
         elseif commandName:match("^moderation other%-actions") then
-            embed["color"] = 0x808080
-            message = interaction:reply{embed = embed,flags = 64}
+            embed["color"] = 0x808080 -- Gray
+            message = interaction:reply{embed = embed,flags = 64} -- Reply | Other-Actions aren't Added
         end
     elseif commandName:match("^other") then
-        embed["color"] = 0x808080
+        embed["color"] = 0x808080 -- Gray
         if commandName:match("^other afk") then
             if commandName:match("^other afk set") then
+                -- Check if is AFK
                 if not afkData[interaction.user.id] then
                     local reason = "No Reason Set"
                     local autoUnafk = false
+
+                    -- Get the Reason, and Unafk Provided
                     for i,v in pairs(options[1]["options"][1]["options"]) do if v["name"] == "reason" then reason = v["value"] elseif v["name"] == "auto-unafk" then autoUnafk = v["value"] end end
+                    
+                    -- Set AFK Data
                     afkData[interaction.user.id] = {["reason"] = reason,["autoUnafk"] = autoUnafk,["flags"] = 0,["mentioned"] = {}}
+
+                    -- Set AFK Data Outside This Code
                     local afkDataJsonW = io.open("afkData.json","w")
                     afkDataJsonW:write(json.encode(afkData))
                     afkDataJsonW:close()
-                    embed["color"] = 0x00ff00
+                    
+                    embed["color"] = 0x00ff00 -- Really Green
                     embed["title"] = "AFK Set"
                     embed["fields"] = {
                         {name = "Reason",value = reason,inline = true},
                         {name = "Auto Remove AFK",value = autoUnafk,inline = true},
                         {name = "Flags",value = 0,inline = true}
                     }
-                    local message = interaction:reply{embed = embed}
-                    message:addReaction(customEmojis["BTLST_Success"])
+                    local message = interaction:reply{embed = embed} -- Reply
+                    message:addReaction(customEmojis["BTLST_Success"]) -- Show the Result by Reacting with Emoji
                 else
-                    embed["color"] = 0xdeb900
+                    embed["color"] = 0xdeb900 -- Orange
                     embed["title"] = "You are AFK Already"
                     embed["description"] = "Check More Details with `/other afk check`🔬"
                     embed["fields"] = {
@@ -386,12 +447,18 @@ client:on("slashCommand",function(interaction,command,args)
                         message = interaction:reply{embed = embed}
                     elseif afkData[interaction.user.id]["autoUnafk"] == false then
                         embed["fields"][1]["value"] = "Either Do '`/other afk remove`' or '`/confirm` in 10 Seconds'"
-                        confirmData[interaction.user.id] = {["request"] = "unafk",["until"] = os.time() + 10}
+                        confirmData[interaction.user.id] = {
+                            ["request"] = "unafk",
+                            ["until"] = os.time() + 10
+                        }
+
+                        -- Set Confirm Data Outside This Code
                         local confirmDataJsonW = io.open("confirmData.json","w")
                         confirmDataJsonW:write(json.encode(confirmData))
                         confirmDataJsonW:close()
-                        message = interaction:reply{embed = embed}
-                        timer.setTimeout(10000,function()
+                        
+                        message = interaction:reply{embed = embed} -- Reply
+                        timer.setTimeout(10000,function() -- Remove Confirm Data Outside This Code, when the 10 Second Duration Passes
                             if confirmData[interaction.user.id] then
                                 confirmData[interaction.user.id] = nil
                                 local confirmDataJsonW = io.open("confirmData.json","w")
@@ -401,9 +468,10 @@ client:on("slashCommand",function(interaction,command,args)
                             return
                         end)
                     end
-                    message:addReaction(customEmojis["BTLST_Basic_Fail"])
+                    message:addReaction(customEmojis["BTLST_Basic_Fail"]) -- Show the Result by Reacting with Emoji
                 end
             elseif commandName:match("^other afk remove") then
+                -- Check if is AFK
                 if afkData[interaction.user.id] then
                     embed["title"] = "You are No Longer AFK"
                     embed["description"] = "Removed AFK Status"
@@ -411,7 +479,7 @@ client:on("slashCommand",function(interaction,command,args)
                     embed["fields"] = {
                         {name = "Reason",value = afkData[interaction.user.id]["reason"],inline = true},
                         {name = "Auto remove AFK",value = tostring(afkData[interaction.user.id]["autoUnafk"]),inline = true},
-                        --{name = "Flags (Always 0/Won't Be Changed Probably)",value = tostring(afkData[interaction.user.id]["flags"]),inline = true},
+                        --{name = "Flags",value = tostring(afkData[interaction.user.id]["flags"]),inline = true},
                         {name = "Mention(s) ("..tostring(#afkData[interaction.user.id]["mentioned"])..")",value = "",inline = true}
                     }
                     for i,v in pairs(afkData[interaction.user.id]["mentioned"]) do embed["fields"][3]["value"] = embed["fields"][3]["value"].." ["..v["username"].."/"..tostring(i).."](https://discord.com/channels/"..v["guildId"].."/"..v["channelId"].."/"..v["messageId"]..")" end
@@ -552,12 +620,9 @@ client:on("slashCommand",function(interaction,command,args)
     else
         interaction:reply{embed = embed}
     end
-    operationIsOnProgress = false
 end)
 client:on("messageCreate",function(message)
     if message.author.bot then return end
-    if operationIsOnProgress then return end
-    operationIsOnProgress = true
     local mentionedIds = {}
     local mentionedAfkIds = {}
     local filledEmbeds = {}
@@ -642,11 +707,8 @@ client:on("messageCreate",function(message)
         local replyMessage = message:reply(willReplyWith)
         for i,v in pairs(resultEmoji) do if v then replyMessage:addReaction(customEmojis[i]) end end
     end
-    operationIsOnProgress = false
 end)
 client:on("raw",function(payload)
-    if operationIsOnProgress then return end
-    operationIsOnProgress = true
     payload = json.decode(payload)
     if payload.t ~= "INTERACTION_CREATE" then operationIsOnProgress = false return end
     local d = payload.d
@@ -800,6 +862,6 @@ client:on("raw",function(payload)
         },
         postData
     )
-    operationIsOnProgress = false
 end)
+
 client:run("Bot "..os.getenv('DISCORD_TOKEN'))
