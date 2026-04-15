@@ -482,48 +482,54 @@ client:on("slashCommand",function(interaction,command,args)
                         --{name = "Flags",value = tostring(afkData[interaction.user.id]["flags"]),inline = true},
                         {name = "Mention(s) ("..tostring(#afkData[interaction.user.id]["mentioned"])..")",value = "",inline = true}
                     }
+
+                    -- Check for Members that @mentioned the User
                     for i,v in pairs(afkData[interaction.user.id]["mentioned"]) do embed["fields"][3]["value"] = embed["fields"][3]["value"].." ["..v["username"].."/"..tostring(i).."](https://discord.com/channels/"..v["guildId"].."/"..v["channelId"].."/"..v["messageId"]..")" end
                     if embed["fields"][3]["value"] == "" then embed["fields"][3] = nil else embed["fields"][3]["value"] = embed["fields"][3]["value"]:match(" (.)") end
-                    local message = interaction:reply{embed = embed}
-                    message:addReaction(customEmojis["BTLST_Success"])
-                    afkData[interaction.user.id] = nil
+                    local message = interaction:reply{embed = embed} -- Reply
+                    message:addReaction(customEmojis["BTLST_Success"]) -- Show the Result by Reacting with Emoji
+                    afkData[interaction.user.id] = nil -- Remove AFK Data
+
+                    -- Remove Afk Data Outside This Code
                     local afkDataJsonW = io.open("afkData.json","w")
                     afkDataJsonW:write(json.encode(afkData))
                     afkDataJsonW:close()
                 else
                     embed["title"] = "You aren't AFK Already"
-                    embed["color"] = 0xdeb900
-                    local message = interaction:reply{embed = embed}
-                    message:addReaction(customEmojis["BTLST_Basic_Fail"])
+                    embed["color"] = 0xdeb900 -- Orange
+                    local message = interaction:reply{embed = embed} -- Reply
+                    message:addReaction(customEmojis["BTLST_Basic_Fail"]) -- Show the Result by Reacting with Emoji
                 end
             elseif commandName:match("^other afk check") then
-                local targetUser = (options[1]["options"][1]["options"][1] and interaction.guild:getMember(options[1]["options"][1]["options"][1]["value"])) or interaction.user
+                local targetMember = (options[1]["options"][1]["options"][1] and interaction.guild:getMember(options[1]["options"][1]["options"][1]["value"])) or member
                 if afkData[interaction.user.id] then
                     embed["title"] = "AFK Details🔬"
-                    embed["description"] = "of "..targetUser.username
-                    embed["color"] = 0x00ff00
+                    embed["description"] = "of "..targetMember.username
+                    embed["color"] = 0x00ff00 -- Really Green
                     embed["fields"] = {
                         {name = "Reason",value = afkData[interaction.user.id]["reason"],inline = true},
                         {name = "Auto Remove AFK",value = tostring(afkData[interaction.user.id]["autoUnafk"]),inline = true},
                         --{name = "Flags",value = tostring(afkData[interaction.user.id]["flags"]),inline = true},
                         {name = "Mention(s) ("..tostring(#afkData[interaction.user.id]["mentioned"])..")",value = "",inline = true}
                     }
+
+                    -- Check the Members that @mentioned the Target Member
                     for i,v in pairs(afkData[interaction.user.id]["mentioned"]) do embed["fields"][3]["value"] = embed["fields"][3]["value"].." ["..v["username"].."/"..tostring(i).."](https://discord.com/channels/"..v["guildId"].."/"..v["channelId"].."/"..v["messageId"]..")" end
                     if embed["fields"][3]["value"] == "" then embed["fields"][3] = nil else embed["fields"][3]["value"] = embed["fields"][3]["value"]:match(" (.)") end
-                    interaction:reply{embed = embed}
+                    interaction:reply{embed = embed} -- Reply
                 else
                     embed["title"] = "Target User isn't AFK Already"
-                    embed["color"] = 0xdeb900
-                    local message = interaction:reply{embed = embed}
-                    message:addReaction(customEmojis["BTLST_Basic_Fail"])
+                    embed["color"] = 0xdeb900 -- Orange
+                    local message = interaction:reply{embed = embed} -- Reply
+                    message:addReaction(customEmojis["BTLST_Basic_Fail"]) -- Show the Result by Reacting with Emoji
                 end
             else
-                local message = interaction:reply{embed = embed,flags = 64}
-                message:addReaction(customEmojis["BTLST_Basic_Fail"])
+                local message = interaction:reply{embed = embed,flags = 64} -- Reply
+                message:addReaction(customEmojis["BTLST_Basic_Fail"]) -- Show the Result by Reacting with Emoji
             end
         else
-            local message = interaction:reply{embed = embed,flags = 64}
-            message:addReaction(customEmojis["BTLST_Basic_Fail"])
+            local message = interaction:reply{embed = embed,flags = 64} -- Reply
+            message:addReaction(customEmojis["BTLST_Basic_Fail"]) -- Show the Result by Reacting with Emoji
         end
     elseif commandName:match("^help") then
         embed["color"] = 0x00ff00
@@ -553,7 +559,7 @@ client:on("slashCommand",function(interaction,command,args)
                 custom_id = "other"
             }
         }
-        local res,data = http.request(
+        local res,data = http.request( -- Send Message with Embeds and Buttons
             "POST",
             string.format("https://discord.com/api/v10/interactions/%s/%s/callback",interaction.id,interaction.token),
             {
@@ -574,24 +580,29 @@ client:on("slashCommand",function(interaction,command,args)
                     {name = "Flags",value = tostring(afkData[interaction.user.id]["flags"]),inline = true},
                     {name = "Mention(s) ("..tostring(#afkData[interaction.user.id]["mentioned"])..")",value = "",inline = true}
                 }
+
+                -- Check Members that @mentioned the User
                 for i,v in pairs(afkData[interaction.user.id]["mentioned"]) do embed["fields"][3]["value"] = embed["fields"][3]["value"].." ["..v["username"].."/"..tostring(i).."](https://discord.com/channels/"..v["guildId"].."/"..v["channelId"].."/"..v["messageId"]..")" end
                 if embed["fields"][3]["value"] == "" then embed["fields"][3] = nil else embed["fields"][3]["value"] = embed["fields"][3]["value"]:match(" (.)") end
-                local message = interaction:reply{embed = embed}
-                message:addReaction(customEmojis["BTLST_Success"])
-                afkData[interaction.user.id] = nil
+                
+                local message = interaction:reply{embed = embed} -- Reply
+                message:addReaction(customEmojis["BTLST_Success"]) -- Show the Result by Reacting with Emoji
+                afkData[interaction.user.id] = nil -- Remove AFK Data
+
+                -- Remove AFK Data Outside This Code
                 local afkDataJsonW = io.open("afkData.json","w")
                 afkDataJsonW:write(json.encode(afkData))
                 afkDataJsonW:close()
             else
                 embed["title"] = "Error Occured"
                 embed["description"] = "Developer Message is "..confirmData[interaction.user.id]["request"]
-                local message = interaction:reply{embed = embed}
-                message:addReaction(customEmojis["BTLST_Fail"])
+                local message = interaction:reply{embed = embed} -- Reply
+                message:addReaction(customEmojis["BTLST_Fail"]) -- Show the Result by Reacting with Emoji
             end
         else
             embed["title"] = "No Confirmation Request📂"
-            embed["color"] = 0x808080
-            interaction:reply{embed = embed}
+            embed["color"] = 0x808080 -- Gray
+            interaction:reply{embed = embed} -- Reply
         end
     elseif commandName:match("^custom%-embeds") then
         local embedJson = options[1]["options"][1]["value"]
@@ -600,44 +611,49 @@ client:on("slashCommand",function(interaction,command,args)
             embed["fields"] = {
                 {name = "Valid Example",value = json.encode({{title = "Custom Embed",description = "Description"},{title = "Custom Embed 2",description = "Description 2"}})}
             }
-            embed["color"] = 0xff0000
+            embed["color"] = 0xff0000 -- Really Red
             interaction:reply{embed = embed,flags = 64}
         else
             if commandName:match("^custom%-embeds ephemeral") then
-                interaction:reply{embeds = json.decode(embedJson),flags = 64}
+                interaction:reply{embeds = json.decode(embedJson),flags = 64} -- Reply
             elseif commandName:match("^custom%-embeds public") then
+                -- Check if has Permission
                 if member:hasPermission("administrator") then
-                    local message = interaction:reply{embeds = json.decode(embedJson)}
-                    if message then message:addReaction(customEmojis["BTLST_Success"]) end
+                    local message = interaction:reply{embeds = json.decode(embedJson)} -- Reply
+                    if message then message:addReaction(customEmojis["BTLST_Success"]) end -- Show the Result by Reacting with Emoji
                 else
                     embed["title"] = "You Don't Have Permission to Use This Command❌"
                     embed["description"] = "You Need the `Administrator` Permission to Use This Command"
-                    embed["color"] = 0xff0000
-                    interaction:reply{embed = embed,flags = 64}
+                    embed["color"] = 0xff0000 -- Really Red
+                    interaction:reply{embed = embed,flags = 64} -- Reply
                 end
             end
         end
     else
-        interaction:reply{embed = embed}
+        interaction:reply{embed = embed} -- Reply | Slash Command isn't Added
     end
 end)
 client:on("messageCreate",function(message)
-    if message.author.bot then return end
+    if message.author.bot then return end -- Check if Subject is Bot
     local mentionedIds = {}
     local mentionedAfkIds = {}
     local filledEmbeds = {}
     local authorId = message.author.id
     local channelId = message.channel.id
     local filledEmbedsLastIndex = 0
-    local resultEmoji = {
+    local resultEmoji = { -- Since the Bot can Reply with More than 1 Embed, The Bot can React with More than 1 Emoji
         ["BTLST_Fail"] = false,
         ["BTLST_Basic_Fail"] = false,
         ["BTLST_Success"] = false
     }
+
+    -- Check the Members that the Subject Member @mentioned 
     for mentionedId in message.content:gmatch("<@(%d+)>") do
         table.insert(mentionedIds,mentionedId)
         if afkData[mentionedId] then table.insert(mentionedAfkIds,mentionedId) end
     end
+
+    -- Check if Subject Member @mentioned Any Member that are AFK
     if #mentionedAfkIds ~= 0 then
         table.insert(filledEmbeds,{
             title = "Mentioned AFK User(s)❗",
@@ -650,6 +666,8 @@ client:on("messageCreate",function(message)
             timestamp = discordia.Date():toISO('T','Z')
         })
         filledEmbedsLastIndex = #filledEmbeds
+
+        -- Append Details of the @mentioned AFK Members to the Embed
         for i,mentionedId2 in pairs(mentionedAfkIds) do
             filledEmbeds[filledEmbedsLastIndex]["fields"][1]["value"] = filledEmbeds[filledEmbedsLastIndex]["fields"][1]["value"].." | <@"..message.guild:getMember(mentionedId2).userId..">"
             filledEmbeds[filledEmbedsLastIndex]["fields"][2]["value"] = filledEmbeds[filledEmbedsLastIndex]["fields"][2]["value"].." | "..afkData[mentionedId2]["reason"].."/"..tostring(i)
@@ -657,6 +675,8 @@ client:on("messageCreate",function(message)
         end
         filledEmbeds[filledEmbedsLastIndex]["fields"][1]["value"] = filledEmbeds[filledEmbedsLastIndex]["fields"][1]["value"]:match(" | (.)")
         filledEmbeds[filledEmbedsLastIndex]["fields"][2]["value"] = filledEmbeds[filledEmbedsLastIndex]["fields"][2]["value"]:match(" | (.)")
+        
+        -- Set AFK Data Outside This Code | afkData[mentionedId2]["mentioned"] Changed
         local afkDataJsonW = io.open("afkData.json","w")
         afkDataJsonW:write(json.encode(afkData))
         afkDataJsonW:close()
